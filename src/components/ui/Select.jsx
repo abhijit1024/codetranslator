@@ -1,6 +1,7 @@
 // components/ui/Select.jsx - Shadcn style Select
-import React, { useState } from "react";
-import { ChevronDown, Check, Search, X } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from 'react-dom';
+import { ChevronDown, Check, X, ChevronUp } from "lucide-react";
 import { cn } from "../../utils/cn";
 import Button from "./Button";
 import Input from "./Input";
@@ -17,7 +18,6 @@ const Select = React.forwardRef(({
     label,
     description,
     error,
-    searchable = false,
     clearable = false,
     loading = false,
     id,
@@ -27,18 +27,14 @@ const Select = React.forwardRef(({
     ...props
 }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+    const selectRef = useRef(null);
 
     // Generate unique ID if not provided
     const selectId = id || `select-${Math.random()?.toString(36)?.substr(2, 9)}`;
 
-    // Filter options based on search
-    const filteredOptions = searchable && searchTerm
-        ? options?.filter(option =>
-            option?.label?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-            (option?.value && option?.value?.toString()?.toLowerCase()?.includes(searchTerm?.toLowerCase()))
-        )
-        : options;
+    // Use all options since search is removed
+    const filteredOptions = options?.filter(option => !option.hidden) || [];
 
     // Get selected option(s) for display
     const getSelectedDisplay = () => {
@@ -55,16 +51,25 @@ const Select = React.forwardRef(({
         return selectedOption ? selectedOption?.label : placeholder;
     };
 
-    const handleToggle = () => {
-        if (!disabled) {
-            const newIsOpen = !isOpen;
-            setIsOpen(newIsOpen);
-            onOpenChange?.(newIsOpen);
-            if (!newIsOpen) {
-                setSearchTerm("");
-            }
+    const updatePosition = () => {
+        if (selectRef.current) {
+            const rect = selectRef.current.getBoundingClientRect();
+            setPosition({
+                top: rect.bottom + window.scrollY,
+                left: rect.left + window.scrollX,
+                height: 300
+            });
         }
     };
+
+    const isSelected = (optionValue) => {
+        if (multiple) {
+            return value?.includes(optionValue) || false;
+        }
+        return value === optionValue;
+    };
+
+    const hasValue = multiple ? value?.length > 0 : value !== undefined && value !== '';
 
     const handleOptionSelect = (option) => {
         if (multiple) {
@@ -80,26 +85,87 @@ const Select = React.forwardRef(({
         }
     };
 
+    const handleClickOutside = useCallback((event) => {
+        if (selectRef.current && !selectRef.current.contains(event.target)) {
+            setIsOpen(false);
+            onOpenChange?.(false);
+        }
+    }, [onOpenChange]);
+
     const handleClear = (e) => {
         e?.stopPropagation();
         onChange?.(multiple ? [] : '');
     };
 
-    const handleSearchChange = (e) => {
-        setSearchTerm(e?.target?.value);
-    };
-
-    const isSelected = (optionValue) => {
-        if (multiple) {
-            return value?.includes(optionValue) || false;
+    const handleToggle = (e) => {
+        if (!disabled) {
+            e.stopPropagation();
+            const willOpen = !isOpen;
+            if (willOpen) {
+                updatePosition();
+            }
+            setIsOpen(willOpen);
+            onOpenChange?.(willOpen);
         }
-        return value === optionValue;
     };
 
-    const hasValue = multiple ? value?.length > 0 : value !== undefined && value !== '';
+    useEffect(() => {
+        if (isOpen) {
+            updatePosition();
+            window.addEventListener('resize', updatePosition);
+            window.addEventListener('scroll', updatePosition, true);
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+        
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen, handleClickOutside]);
+
+    const dropdownContent = isOpen && (
+        <div 
+            className="fixed z-[9999] bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700 rounded-md shadow-xl shadow-black/20 dark:shadow-black/40 overflow-hidden"
+            style={{
+                top: `${position.top}px`,
+                left: `${position.left}px`,
+                width: `${position.width}px`,
+                maxHeight: '300px',
+                transform: 'translateY(4px)'
+            }}
+        >
+            <div className="py-1 overflow-y-auto" style={{ maxHeight: '300px' }}>
+                {filteredOptions?.length > 0 ? (
+                    filteredOptions.map((option) => (
+                        <div
+                            key={option.value}
+                            className={cn(
+                                "relative flex cursor-pointer select-none items-center px-3 py-2 text-sm outline-none hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150",
+                                isSelected(option.value) && "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium",
+                                option.disabled && "pointer-events-none opacity-50"
+                            )}
+                            onClick={() => !option.disabled && handleOptionSelect(option)}
+                        >
+                            <span className="flex-1">{option.label}</span>
+                            {isSelected(option.value) && (
+                                <Check className="h-4 w-4 flex-shrink-0" />
+                            )}
+                        </div>
+                    ))
+                ) : (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                        No options available
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 
     return (
-        <div className={cn("relative", className)}>
+        <div className={cn("relative w-full", className)} ref={selectRef}>
             {label && (
                 <label
                     htmlFor={selectId}
@@ -149,77 +215,34 @@ const Select = React.forwardRef(({
                             </Button>
                         )}
 
-                        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+                        {isOpen ? (
+                            <ChevronUp className="h-4 w-4 opacity-70" />
+                        ) : (
+                            <ChevronDown className="h-4 w-4 opacity-70" />
+                        )}
                     </div>
                 </button>
 
                 {/* Hidden native select for form submission */}
                 <select
                     name={name}
-                    value={value || ''}
-                    onChange={() => { }} // Controlled by our custom logic
                     className="sr-only"
+                    aria-hidden="true"
                     tabIndex={-1}
-                    multiple={multiple}
-                    required={required}
+                    value={value}
+                    onChange={() => {}}
                 >
-                    <option value="">Select...</option>
-                    {options?.map(option => (
-                        <option key={option?.value} value={option?.value}>
-                            {option?.label}
+                    {options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                            {option.label}
                         </option>
                     ))}
                 </select>
 
-                {/* Dropdown */}
-                {isOpen && (
-                    <div className="absolute z-50 w-full mt-1 bg-white text-black border border-border rounded-md shadow-md">
-                        {searchable && (
-                            <div className="p-2 border-b">
-                                <div className="relative">
-                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Search options..."
-                                        value={searchTerm}
-                                        onChange={handleSearchChange}
-                                        className="pl-8"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="py-1 max-h-60 overflow-auto">
-                            {filteredOptions?.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-muted-foreground">
-                                    {searchTerm ? 'No options found' : 'No options available'}
-                                </div>
-                            ) : (
-                                filteredOptions?.map((option) => (
-                                    <div
-                                        key={option?.value}
-                                        className={cn(
-                                            "relative flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                            isSelected(option?.value) && "bg-primary text-primary-foreground",
-                                            option?.disabled && "pointer-events-none opacity-50"
-                                        )}
-                                        onClick={() => !option?.disabled && handleOptionSelect(option)}
-                                    >
-                                        <span className="flex-1">{option?.label}</span>
-                                        {multiple && isSelected(option?.value) && (
-                                            <Check className="h-4 w-4" />
-                                        )}
-                                        {option?.description && (
-                                            <span className="text-xs text-muted-foreground ml-2">
-                                                {option?.description}
-                                            </span>
-                                        )}
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                )}
+                {/* Dropdown Portal */}
+                {typeof document !== 'undefined' && createPortal(dropdownContent, document.body)}
             </div>
+            
             {description && !error && (
                 <p className="text-sm text-muted-foreground mt-1">
                     {description}

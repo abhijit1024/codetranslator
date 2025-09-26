@@ -3,19 +3,39 @@ import Select from '../../../components/ui/Select';
 
 const LanguageSelector = ({ value, onChange, label, disabled = false }) => {
   const languageOptions = [
-    { value: 'javascript', label: 'JavaScript' },
-    { value: 'python', label: 'Python' },
-    { value: 'java', label: 'Java' },
-    { value: 'cpp', label: 'C++' },
+    { value: 'assembly', label: 'Assembly' },
+    { value: 'bash', label: 'Bash' },
+    { value: 'c', label: 'C' },
     { value: 'csharp', label: 'C#' },
+    { value: 'clojure', label: 'Clojure' },
+    { value: 'cpp', label: 'C++' },
+    { value: 'dart', label: 'Dart' },
+    { value: 'elixir', label: 'Elixir' },
+    { value: 'erlang', label: 'Erlang' },
     { value: 'go', label: 'Go' },
-    { value: 'rust', label: 'Rust' },
-    { value: 'typescript', label: 'TypeScript' },
+    { value: 'groovy', label: 'Groovy' },
+    { value: 'haskell', label: 'Haskell' },
+    { value: 'java', label: 'Java' },
+    { value: 'javascript', label: 'JavaScript' },
+    { value: 'julia', label: 'Julia' },
+    { value: 'kotlin', label: 'Kotlin' },
+    { value: 'lua', label: 'Lua' },
+    { value: 'matlab', label: 'MATLAB' },
+    { value: 'objective-c', label: 'Objective-C' },
+    { value: 'pascal', label: 'Pascal' },
+    { value: 'perl', label: 'Perl' },
     { value: 'php', label: 'PHP' },
+    { value: 'powershell', label: 'PowerShell' },
+    { value: 'python', label: 'Python' },
+    { value: 'r', label: 'R' },
     { value: 'ruby', label: 'Ruby' },
+    { value: 'rust', label: 'Rust' },
+    { value: 'scala', label: 'Scala' },
+    { value: 'sql', label: 'SQL' },
     { value: 'swift', label: 'Swift' },
-    { value: 'kotlin', label: 'Kotlin' }
-  ];
+    { value: 'typescript', label: 'TypeScript' },
+    { value: 'vbnet', label: 'VB.NET' }
+  ].sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <Select
@@ -25,7 +45,7 @@ const LanguageSelector = ({ value, onChange, label, disabled = false }) => {
       onChange={onChange}
       disabled={disabled}
       placeholder="Select language"
-      searchable
+      className="w-full"
     />
   );
 };
