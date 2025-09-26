@@ -1,6 +1,7 @@
 // components/ui/Select.jsx - Shadcn style Select
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from 'react-dom';
+import { throttle } from 'lodash';
 import { ChevronDown, Check, X, ChevronUp } from "lucide-react";
 import { cn } from "../../utils/cn";
 import Button from "./Button";
@@ -29,7 +30,12 @@ const Select = React.forwardRef(({
 }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+    const [position, setPosition] = useState({ 
+        top: 0, 
+        left: 0, 
+        width: 0, 
+        openAbove: false 
+    });
     const selectRef = useRef(null);
     const searchInputRef = useRef(null);
 
@@ -64,16 +70,47 @@ const Select = React.forwardRef(({
         return selectedOption ? selectedOption?.label : placeholder;
     };
 
-    const updatePosition = () => {
-        if (selectRef.current) {
-            const rect = selectRef.current.getBoundingClientRect();
-            setPosition({
-                top: rect.bottom + window.scrollY,
-                left: rect.left + window.scrollX,
-                height: 300
-            });
+    const updatePosition = useCallback(() => {
+        if (!selectRef.current) return;
+        
+        const rect = selectRef.current.getBoundingClientRect();
+        const scrollY = window.scrollY || document.documentElement.scrollTop;
+        const scrollX = window.scrollX || document.documentElement.scrollLeft;
+        
+        // Calculate available space
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        
+        // Get the scrollable parent
+        let parent = selectRef.current.parentElement;
+        let parentRect = { top: 0, left: 0 };
+        
+        // Determine whether to open above or below
+        const openAbove = spaceBelow < 200 && spaceAbove > spaceBelow;
+        // Find the first scrollable parent
+        while (parent) {
+            const style = window.getComputedStyle(parent);
+            const isScrollable = style.overflowY === 'auto' || style.overflowY === 'scroll' ||
+                               style.overflow === 'auto' || style.overflow === 'scroll';
+            
+            if (isScrollable && parent.scrollHeight > parent.clientHeight) {
+                parentRect = parent.getBoundingClientRect();
+                break;
+            }
+            
+            if (parent === document.body) break;
+            parent = parent.parentElement;
         }
-    };
+        
+        setPosition(prev => ({
+            ...prev,
+            top: rect.bottom,
+            left: rect.left,
+            width: Math.min(rect.width, window.innerWidth - 48), // Ensure it doesn't go off screen
+            openAbove: spaceBelow < 200 && spaceAbove > spaceBelow
+        }));
+    }, []); // No dependencies needed as we're using the callback form of setPosition
 
     const isSelected = (optionValue) => {
         if (multiple) {
@@ -142,33 +179,77 @@ const Select = React.forwardRef(({
         }
     };
 
-    useEffect(() => {
-        if (isOpen) {
+    // Track scroll position
+    const [scrollPosition, setScrollPosition] = useState({ x: 0, y: 0 });
+    
+    // Throttle position updates
+    const throttledUpdatePosition = useCallback(
+        throttle(() => {
             updatePosition();
-            window.addEventListener('resize', updatePosition);
-            window.addEventListener('scroll', updatePosition, true);
-            document.addEventListener('mousedown', handleClickOutside);
-        } else {
+        }, 16), // ~60fps
+        []
+    );
+
+    useEffect(() => {
+        if (!isOpen) {
             document.removeEventListener('mousedown', handleClickOutside);
+            return;
         }
+
+        updatePosition();
+        
+        // Use passive event listeners for better performance
+        const options = { passive: true, capture: true };
+        
+        window.addEventListener('resize', throttledUpdatePosition, options);
+        window.addEventListener('scroll', throttledUpdatePosition, options);
+        document.addEventListener('mousedown', handleClickOutside);
+        
+        // Update on any scroll or resize in the document
+        const scrollableElements = document.querySelectorAll('*');
+        scrollableElements.forEach(el => {
+            if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) {
+                el.addEventListener('scroll', throttledUpdatePosition, options);
+            }
+        });
         
         return () => {
-            window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', throttledUpdatePosition, options);
+            window.removeEventListener('scroll', throttledUpdatePosition, options);
             document.removeEventListener('mousedown', handleClickOutside);
+            
+            scrollableElements.forEach(el => {
+                el.removeEventListener('scroll', throttledUpdatePosition, options);
+            });
+            
+            // Cleanup throttle
+            throttledUpdatePosition.cancel();
         };
-    }, [isOpen, handleClickOutside]);
+    }, [isOpen, handleClickOutside, throttledUpdatePosition]);
 
-    const dropdownContent = isOpen && (
+    // Render dropdown content
+    const dropdownContent = (
         <div 
-            className="fixed z-[9999] bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700 rounded-md shadow-xl shadow-black/20 dark:shadow-black/40 overflow-hidden flex flex-col"
+            className="fixed z-[9999] bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700 rounded-md shadow-xl shadow-black/20 dark:shadow-black/40 overflow-hidden flex flex-col transition-all duration-150"
             style={{
-                top: `${position.top}px`,
+                position: 'fixed',
+                top: position.openAbove ? 'auto' : `${position.top}px`,
+                bottom: position.openAbove ? `calc(100% - ${position.top}px + 4px)` : 'auto',
                 left: `${position.left}px`,
                 width: `${position.width}px`,
-                maxHeight: '300px',
-                transform: 'translateY(4px)'
+                maxHeight: position.openAbove ? `${Math.min(position.top, 300)}px` : '300px',
+                transform: position.openAbove ? 'translateY(-4px)' : 'translateY(4px)',
+                willChange: 'transform, opacity',
+                pointerEvents: 'auto',
+                transformOrigin: position.openAbove ? 'bottom' : 'top',
+                transition: 'transform 0.15s ease, opacity 0.15s ease',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                contain: 'layout paint',
+                // Ensure the dropdown stays in the viewport
+                maxWidth: 'calc(100vw - 24px)'
             }}
+            onClick={(e) => e.stopPropagation()}
         >
             {searchable && (
                 <div className="p-2 border-b border-gray-200 dark:border-gray-700">
@@ -222,19 +303,21 @@ const Select = React.forwardRef(({
     );
 
     return (
-        <div className={cn("relative w-full", className)} ref={selectRef}>
-            {label && (
-                <label
-                    htmlFor={selectId}
-                    className={cn(
-                        "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block",
-                        error ? "text-destructive" : "text-foreground"
-                    )}
-                >
-                    {label}
-                    {required && <span className="text-destructive ml-1">*</span>}
-                </label>
-            )}
+        <>
+            <div className={cn("relative w-full", className)} ref={selectRef}>
+                {label && (
+                    <label
+                        htmlFor={selectId}
+                        className={cn(
+                            "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block",
+                            error ? "text-destructive" : "text-foreground"
+                        )}
+                    >
+                        {label}
+                        {required && <span className="text-destructive ml-1">*</span>}
+                    </label>
+                )}
+                {isOpen && createPortal(dropdownContent, document.body)}
             <div className="relative">
                 <button
                     ref={ref}
@@ -297,7 +380,7 @@ const Select = React.forwardRef(({
                 </select>
 
                 {/* Dropdown Portal */}
-                {typeof document !== 'undefined' && createPortal(dropdownContent, document.body)}
+                {typeof document !== 'undefined' && isOpen && createPortal(dropdownContent, document.body)}
             </div>
             
             {description && !error && (
@@ -305,12 +388,13 @@ const Select = React.forwardRef(({
                     {description}
                 </p>
             )}
-            {error && (
-                <p className="text-sm text-destructive mt-1">
-                    {error}
-                </p>
-            )}
-        </div>
+                {error && (
+                    <p className="text-sm text-destructive mt-1">
+                        {error}
+                    </p>
+                )}
+            </div>
+        </>
     );
 });
 
