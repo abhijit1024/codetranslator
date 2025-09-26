@@ -20,6 +20,7 @@ const Select = React.forwardRef(({
     error,
     clearable = false,
     loading = false,
+    searchable = true,
     id,
     name,
     onChange,
@@ -27,18 +28,30 @@ const Select = React.forwardRef(({
     ...props
 }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
     const selectRef = useRef(null);
+    const searchInputRef = useRef(null);
 
     // Generate unique ID if not provided
     const selectId = id || `select-${Math.random()?.toString(36)?.substr(2, 9)}`;
 
-    // Use all options since search is removed
-    const filteredOptions = options?.filter(option => !option.hidden) || [];
+    // Filter options based on search term
+    const filteredOptions = React.useMemo(() => {
+        if (!searchable || !searchTerm) {
+            return options?.filter(option => !option.hidden) || [];
+        }
+        const term = searchTerm.toLowerCase();
+        return options?.filter(option => 
+            !option.hidden && 
+            (option.label.toLowerCase().includes(term) || 
+             option.value.toLowerCase().includes(term))
+        ) || [];
+    }, [options, searchTerm, searchable]);
 
     // Get selected option(s) for display
     const getSelectedDisplay = () => {
-        if (!value) return placeholder;
+        if (!value && value !== 0) return placeholder;
 
         if (multiple) {
             const selectedOptions = options?.filter(opt => value?.includes(opt?.value));
@@ -103,9 +116,29 @@ const Select = React.forwardRef(({
             const willOpen = !isOpen;
             if (willOpen) {
                 updatePosition();
+                // Focus search input when dropdown opens
+                setTimeout(() => {
+                    if (searchable && searchInputRef.current) {
+                        searchInputRef.current.focus();
+                    }
+                }, 0);
+            } else {
+                setSearchTerm('');
             }
             setIsOpen(willOpen);
             onOpenChange?.(willOpen);
+        }
+    };
+
+    const handleSearch = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+    const clearSearch = (e) => {
+        e.stopPropagation();
+        setSearchTerm('');
+        if (searchInputRef.current) {
+            searchInputRef.current.focus();
         }
     };
 
@@ -128,7 +161,7 @@ const Select = React.forwardRef(({
 
     const dropdownContent = isOpen && (
         <div 
-            className="fixed z-[9999] bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700 rounded-md shadow-xl shadow-black/20 dark:shadow-black/40 overflow-hidden"
+            className="fixed z-[9999] bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-200 dark:border-gray-700 rounded-md shadow-xl shadow-black/20 dark:shadow-black/40 overflow-hidden flex flex-col"
             style={{
                 top: `${position.top}px`,
                 left: `${position.left}px`,
@@ -137,7 +170,31 @@ const Select = React.forwardRef(({
                 transform: 'translateY(4px)'
             }}
         >
-            <div className="py-1 overflow-y-auto" style={{ maxHeight: '300px' }}>
+            {searchable && (
+                <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+                    <div className="relative">
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            value={searchTerm}
+                            onChange={handleSearch}
+                            placeholder="Search..."
+                            className="w-full px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                onClick={clearSearch}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+            <div className="overflow-y-auto flex-1" style={{ maxHeight: searchable ? '250px' : '300px' }}>
                 {filteredOptions?.length > 0 ? (
                     filteredOptions.map((option) => (
                         <div
