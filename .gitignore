@@ -1,0 +1,259 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.pnp.cjs
+.pnp.loader.mjs
+
+# Build output
+/dist
+/build
+/dist-ssr
+*.local
+
+# Debug logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Build cache
+.cache
+.eslintcache
+.parcel-cache
+.next
+.nuxt
+.nitro
+.cache/
+.astro
+.temp
+.tmp
+.temp/
+.tmp/
+.vercel
+.netlify
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.*.local
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Package manager specific
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# Testing
+/coverage
+/cypress/videos/
+/cypress/screenshots/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local development
+*.local
+
+# IDE specific
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Vite
+*.local
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+# pnpm
+node_modules/
+.pnpm-store/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Optional jest cache
+.jest-cache/
+
+# Optional Cypress videos and screenshots
+cypress/videos/
+cypress/screenshots/
+
+# Optional Playwright
+playwright-report/
+playwright/.cache/
+test-results/
+
+# Optional VSCode
+.vscode/*
+!.vscode/extensions.json
+
+# Optional IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+*.ids
+*.orig
+
+# Optional Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Optional Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Optional Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# Optional macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Optional Linux
+*~
+
+# Optional Vim
+*.swp
+*.swo
+*~
+
+# Optional Visual Studio
+.vs/
+*.suo
+*.sln.docstates
+
+# Optional NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+
+# Optional VS Code
+.history/
+
+# Optional Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Optional sass
+.sass-cache/
+
+# Optional lock file
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Optional next.js
+.next/
+out/
+
+# Optional production
+build
+
+# Optional misc
+.DS_Store
+*.pem
+
+# Optional debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env*.local
+
+# Vite build output
+/dist
+
+# Vite cache
+.cache/
+
+# Vite temp files
+.temp/
+.tmp/
+
+# Vite preview
+/preview
+
+# Vite HMR
+.history
+
+# Vite build output
+/build
+
+# Vite cache
+.vite/
+
+# Vite temp files
+.temp/
+.tmp/
+
+# Vite preview
+/preview
+
+# Vite HMR
+.history
